@@ -21,6 +21,7 @@ public enum CharacterStyle : CharacterStyling {
 	case none
 	case bold
 	case italic
+    case underline
 	case code
 	case link
 	case image
@@ -82,6 +83,7 @@ enum MarkdownLineStyle : LineStyling {
 	case normal
 	case bold
 	case italic
+    case underline
 	case boldItalic
 }
 
@@ -202,7 +204,7 @@ If that is not set, then the system default will be used.
 		CharacterRule(primaryTag: CharacterRuleTag(tag: "`", type: .repeating), otherTags: [], styles: [1 : CharacterStyle.code], shouldCancelRemainingRules: true, balancedTags: true),
 		CharacterRule(primaryTag:CharacterRuleTag(tag: "~", type: .repeating), otherTags : [], styles: [2 : CharacterStyle.strikethrough], minTags:2 , maxTags:2),
 		CharacterRule(primaryTag: CharacterRuleTag(tag: "*", type: .repeating), otherTags: [], styles: [1 : CharacterStyle.italic, 2 : CharacterStyle.bold], minTags:1 , maxTags:2),
-		CharacterRule(primaryTag: CharacterRuleTag(tag: "_", type: .repeating), otherTags: [], styles: [1 : CharacterStyle.italic, 2 : CharacterStyle.bold], minTags:1 , maxTags:2)
+		CharacterRule(primaryTag: CharacterRuleTag(tag: "_", type: .repeating), otherTags: [], styles: [1 : CharacterStyle.italic, 2 : CharacterStyle.underline], minTags:1 , maxTags:2)
 	]
 	
 	let lineProcessor = SwiftyLineProcessor(rules: SwiftyMarkdown.lineRules, defaultRule: MarkdownLineStyle.body, frontMatterRules: SwiftyMarkdown.frontMatterRules)
@@ -240,13 +242,16 @@ If that is not set, then the system default will be used.
 	
 	/// The styles to apply to any italic text found in the Markdown
 	open var italic = BasicStyles()
+    
+    /// The styles to apply to any underlined text found in the Markdown
+    open var underline = BasicStyles()
 	
 	/// The styles to apply to any code blocks or inline code text found in the Markdown
 	open var code = BasicStyles()
 	
 	open var strikethrough = BasicStyles()
 	
-	public var bullet : String = "・"
+	public var bullet : String = "•"
 	
 	public var underlineLinks : Bool = false
 	
@@ -327,6 +332,7 @@ If that is not set, then the system default will be used.
 		body.fontSize = size
 		italic.fontSize = size
 		bold.fontSize = size
+        underline.fontSize = size
 		code.fontSize = size
 		link.fontSize = size
 		link.fontSize = size
@@ -360,6 +366,7 @@ If that is not set, then the system default will be used.
 		body.color = color
 		italic.color = color
 		bold.color = color
+        underline.color = color
 		code.color = color
 		link.color = color
 		blockquotes.color = color
@@ -377,6 +384,7 @@ If that is not set, then the system default will be used.
 		body.fontName = name
 		italic.fontName = name
 		bold.fontName = name
+        underline.fontName = name
 		code.fontName = name
 		link.fontName = name
 		blockquotes.fontName = name
@@ -528,7 +536,7 @@ extension SwiftyMarkdown {
 			paragraphStyle.headIndent = addition
 
 			attributes[.paragraphStyle] = paragraphStyle
-			finalTokens.insert(Token(type: .string, inputString: "\(indent)\(listItem)\t"), at: 0)
+			finalTokens.insert(Token(type: .string, inputString: "  \(indent)\(listItem)  "), at: 0)
 			
 		case .yaml:
 			lineProperties = body
@@ -560,14 +568,22 @@ extension SwiftyMarkdown {
 			guard let styles = token.characterStyles as? [CharacterStyle] else {
 				continue
 			}
-			if styles.contains(.italic) {
-				attributes[.font] = self.font(for: line, characterOverride: .italic)
-				attributes[.foregroundColor] = self.italic.color
-			}
-			if styles.contains(.bold) {
-				attributes[.font] = self.font(for: line, characterOverride: .bold)
-				attributes[.foregroundColor] = self.bold.color
-			}
+            
+            var overrides: [CharacterStyle] = []
+            if styles.contains(.bold) {
+                overrides.append(.bold)
+                attributes[.foregroundColor] = self.bold.color
+            }
+            if styles.contains(.italic) {
+                overrides.append(.italic)
+                attributes[.foregroundColor] = self.italic.color
+            }
+            if styles.contains(.underline) {
+                overrides.append(.underline)
+                attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue as AnyObject
+                attributes[.foregroundColor] = self.underline.color
+            }
+            attributes[.font] = self.font(for: line, characterOverrides: overrides)
 			
             if let linkIdx = styles.firstIndex(of: .link), linkIdx < token.metadataStrings.count {
                 attributes[.foregroundColor] = self.link.color

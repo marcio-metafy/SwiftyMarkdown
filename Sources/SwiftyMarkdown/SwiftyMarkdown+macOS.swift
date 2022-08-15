@@ -13,11 +13,16 @@ import AppKit
 extension SwiftyMarkdown {
 	
 	func font( for line : SwiftyLine, characterOverride : CharacterStyle? = nil ) -> NSFont {
+        font(for: line, characterOverrides: characterOverride == nil ? [] : [characterOverride!])
+    }
+
+    func font( for line : SwiftyLine, characterOverrides : [CharacterStyle]) -> NSFont {
 		var fontName : String?
 		var fontSize : CGFloat?
 		
 		var globalBold = false
 		var globalItalic = false
+        var globalUnderline = false
 		
 		let style : FontProperties
 		// What type are we and is there a font name set?
@@ -49,6 +54,8 @@ extension SwiftyMarkdown {
 			globalBold = true
 		case .italic:
 			globalItalic = true
+        case .underline:
+            globalUnderline = true
 		case .boldItalic:
 			globalItalic = true
 			globalBold = true
@@ -60,7 +67,7 @@ extension SwiftyMarkdown {
 			fontName = body.fontName
 		}
 		
-		if let characterOverride = characterOverride {
+        for characterOverride in characterOverrides {
 			switch characterOverride {
 			case .code:
 				fontName = code.fontName ?? fontName
@@ -76,6 +83,10 @@ extension SwiftyMarkdown {
 				fontName = italic.fontName ?? fontName
 				fontSize = italic.fontSize
 				globalItalic = true
+            case .underline:
+                fontName = underline.fontName ?? fontName
+                fontSize = underline.fontSize
+                globalUnderline = true
 			default:
 				break
 			}
@@ -99,14 +110,16 @@ extension SwiftyMarkdown {
 			font = NSFont.systemFont(ofSize: finalSize)
 		}
 		
-		if globalItalic {
-			let italicDescriptor = font.fontDescriptor.withSymbolicTraits(.italic)
-			font = NSFont(descriptor: italicDescriptor, size: 0) ?? font
-		}
-		if globalBold {
-			let boldDescriptor = font.fontDescriptor.withSymbolicTraits(.bold)
-			font = NSFont(descriptor: boldDescriptor, size: 0) ?? font
-		}
+        if globalItalic, globalBold {
+            let boldItalicDescriptor = font.fontDescriptor.withSymbolicTraits([.italic, .bold])
+            font = NSFont(descriptor: boldItalicDescriptor, size: 0) ?? font
+        } else if globalBold {
+            let boldDescriptor = font.fontDescriptor.withSymbolicTraits(.bold)
+            font = NSFont(descriptor: boldDescriptor, size: 0) ?? font
+        } else if globalItalic {
+            let italicDescriptor = font.fontDescriptor.withSymbolicTraits(.italic)
+            font = NSFont(descriptor: italicDescriptor, size: 0) ?? font
+        }
 		
 		return font
 		
